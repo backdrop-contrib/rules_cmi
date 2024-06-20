@@ -1,0 +1,54 @@
+<?php
+/**
+ * @file
+ *  Provides functionality to save Rules configurations as CMI files.
+ */
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function rules_cmi_entity_info_alter(&$info) {
+  $info['rules_config']['entity class'] = 'EntityPlusCmiEntity';
+  $info['rules_config']['controller class'] = 'RulesEntityCmiController';
+  $info['rules_config']['views controller'] = FALSE;
+  // Does nothing until Entity Plus issue #175 is merged.
+  $info['rules_config']['cmi storage'] = TRUE;
+  // We must "fool" Rules plugins by assigning 'schema_fields_sql' info to the entity.
+  $info['rules_config']['schema_fields_sql']['base table'] = backdrop_schema_fields_sql('rules_config');
+}
+
+/**
+ * Implements hook_autoload_info().
+ */
+function rules_cmi_autoload_info() {
+  return array(
+    'RulesEntityCmiController' => 'includes/RulesEntityCmiController.inc',
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function rules_cmi_form_rules_admin_reaction_overview_alter(&$form, &$form_state) {
+  $form['filter']['tag']['#options'] = array(0 => t('<All>')) + rules_cmi_get_tags();
+}
+
+/**
+ * Get tags from reaction rules.
+ * 
+ * Since tags are not stored in DB anymore, these have to be retrieved from the
+ * cmi records.
+ * 
+ * @return array
+ *  An array of tags keyed by tag name.
+ */
+function rules_cmi_get_tags() {
+  $rules_configs = rules_config_load_multiple(FALSE);
+  $tags = array();
+  foreach ($rules_configs as $rules_config) {
+    foreach ($rules_config->tags as $tag) {
+      $tags[$tag] = $tag;
+    }
+  }
+  return $tags;
+}

@@ -1,0 +1,8 @@
+type = module
+name = Rules CMI Storage
+description = Stores Rules configurations in json config files
+backdrop = 1.x
+package = Rules
+
+dependencies[] = rules
+dependencies[] = entity_plus_cmi (>=2.0.1)
