@@ -163,6 +163,12 @@ class RulesEntityCmiController extends EntityPlusCmiController {
    * Adaptation of RulesEntityController::save().
    */
   public function save($rules_config, DatabaseTransaction $transaction = NULL) {
+    // At times (e.g. during import) some of the $rules_config defaults are not
+    // set. When Rules are in DB, this is not a problem - Backdrop creates
+    // defaults defined in hook_schema(). With CMI with need to set them
+    // explicitly.
+    $this->setDefaults($rules_config);
+
     // At this point, is_new is not set. The only way to see if this existed is
     // to try to load it.
     $original = $this->load(array($rules_config->name));
@@ -173,8 +179,6 @@ class RulesEntityCmiController extends EntityPlusCmiController {
     else {
       $original = NULL;
       $rules_config->is_new = TRUE;
-      // Status has a default of ENTITY_PLUS_CUSTOM for new records.
-      $rules_config->status = ENTITY_PLUS_CUSTOM;
     }
 
     // We must run serialize, as the object has to run __sleep to select specific
@@ -242,5 +246,26 @@ class RulesEntityCmiController extends EntityPlusCmiController {
       }
     }
     return $return;
+  }
+
+  /**
+   * Sets some default values for $rules_config.
+   */
+  protected function setDefaults($rules_config) {
+    $defaults = array(
+      'label' => 'unlabeled',
+      'active' => 1,
+      'weight' => 0,
+      'dirty' => 0,
+      'owner' => 'rules',
+      'access_exposed' => 0,
+      'status' => ENTITY_PLUS_CUSTOM,
+      'tags' => array(),
+    );
+    foreach ($defaults as $key => $value) {
+      if (!isset($rules_config->$key)) {
+        $rules_config->$key = $value;
+      }
+    }
   }
 }
