@@ -1,10 +1,10 @@
 # Rules CMI Storage
 
-An EXPERIMENTAL module that allows the saving of Rules configurations as CMI
-JSON files. This means you can export/import rules the same way you import/export other 
-configuration files (through the Configuration Manager in the admin menu).
+An EXPERIMENTAL module that changes the storage of Rules from database tables to configuration CMI
+JSON files. This means you can export/import rules the same way you export/import other 
+configuration files: through the Configuration Manager in the admin menu.
 
-This module has not been thoroughly tested. If you are interested, please DO TEST. I'd like to make this module fully functional.
+This module still needs testing. If you are interested, please DO TEST and open issues in the issue queue. I'd like to make this module fully functional.
 
 ## How to use
 At this point, simply enable the module and create and save rules. NB: this version still cannot move Rules from database to CMI and vice versa. But you can use the default non-CMI json export and import functionality provided by Rules to export all your rules and then import them after enabling the module. 
