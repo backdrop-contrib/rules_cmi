@@ -4,5 +4,7 @@ description = Stores Rules configurations in json config files
 backdrop = 1.x
 package = Rules
 
+configure = admin/config/workflow/rules_cmi
+
 dependencies[] = rules
 dependencies[] = entity_plus_cmi (>=2.0.1)

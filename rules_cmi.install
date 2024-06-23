@@ -1,0 +1,12 @@
+<?php
+/**
+ * @file
+ * Installation functions for Rules CMI
+ */
+
+ /**
+  * Implements hook_install().
+  */
+  function rules_cmi_install() {
+    backdrop_set_message(t('Notice: Rules are still being stored in database. To enable Rules CMI storage, please visit the <a href="@config_url">Rules CMI configuration page</a>.', array('@config_url' => url('admin/config/workflow/rules_cmi'))), 'info');
+  }
