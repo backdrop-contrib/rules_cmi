@@ -18,8 +18,10 @@ class RulesEntityCmiController extends EntityPlusCmiController {
    * This is an adaptation of RulesEntityController::create()
    */
   public function create(array $values = array()) {
-    $values += array('owner' => 'rules', 'status' => ENTITY_PLUS_CUSTOM);
-    return parent::create($values);
+    // $values += array('owner' => 'rules', 'status' => ENTITY_PLUS_CUSTOM);
+    $rules_config = parent::create($values);
+    $this->setDefaults($rules_config);
+    return $rules_config;
   }
 
   /**

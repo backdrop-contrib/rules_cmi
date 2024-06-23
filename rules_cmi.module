@@ -5,16 +5,66 @@
  */
 
 /**
+ * Implements hook_menu().
+ */
+function rules_cmi_menu() {
+  $items = array();
+  $items['admin/config/workflow/rules_cmi/configuration'] = array(
+    'title' => 'Rules CMI status',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items['admin/config/workflow/rules_cmi'] = array(
+    'title' => 'Rules CMI settings',
+    'description' => 'Configure Rules CMI to store Rules as CMI files.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('rules_cmi_configuration_form'),
+    'access arguments' => array('administer rules'),
+    'file' => 'rules_cmi.admin.inc',
+  );
+  $items['admin/config/workflow/rules_cmi/transfer'] = array(
+    'title' => 'Rules transfer',
+    'description' => 'Transfer Rules to database or CMI.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('rules_cmi_transfer_to_cmi_form'),
+    'access arguments' => array('administer rules'),
+    'file' => 'rules_cmi.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/config/workflow/rules_cmi/transfer/to-cmi'] = array(
+    'title' => 'Transfer from database to CMI',
+    'description' => 'Transfer Rules from database to CMI.',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -1,
+  );
+
+  $items['admin/config/workflow/rules_cmi/transfer/to-database'] = array(
+    'title' => 'Transfer from CMI to database',
+    'description' => 'Transfer Rules from CMI to database.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('rules_cmi_transfer_to_db_form'),
+    'access arguments' => array('administer rules'),
+    'file' => 'rules_cmi.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 1,
+  );
+
+  return $items;
+}
+/**
  * Implements hook_entity_info_alter().
  */
 function rules_cmi_entity_info_alter(&$info) {
-  $info['rules_config']['entity class'] = 'EntityPlusCmiEntity';
-  $info['rules_config']['controller class'] = 'RulesEntityCmiController';
-  $info['rules_config']['views controller'] = FALSE;
-  // Does nothing until Entity Plus issue #175 is merged.
-  $info['rules_config']['cmi storage'] = TRUE;
-  // We must "fool" Rules plugins by assigning 'schema_fields_sql' info to the entity.
-  $info['rules_config']['schema_fields_sql']['base table'] = backdrop_schema_fields_sql('rules_config');
+  $status = config_get('rules_cmi.settings', 'cmi_storage_status');
+  if ($status == 'cmi') {
+    $info['rules_config']['entity class'] = 'EntityPlusCmiEntity';
+    $info['rules_config']['controller class'] = 'RulesEntityCmiController';
+    $info['rules_config']['views controller'] = FALSE;
+    // Does nothing until Entity Plus issue #175 is merged.
+    $info['rules_config']['cmi storage'] = TRUE;
+    // We must "fool" Rules plugins by assigning 'schema_fields_sql' info to the entity.
+    $info['rules_config']['schema_fields_sql']['base table'] = backdrop_schema_fields_sql('rules_config');
+  }
 }
 
 /**
@@ -30,32 +80,34 @@ function rules_cmi_autoload_info() {
  * Implements hook_form_FORM_ID_alter().
  */
 function rules_cmi_form_rules_admin_reaction_overview_alter(&$form, &$form_state) {
-  $form['filter']['tag']['#options'] = array(0 => t('<All>')) + rules_cmi_get_tags();
-  // Add the operation "CMI export"
-  // This is complicated and pretty ridiculous. Rules doesn't allow to set a
-  // different UI controller other than RulesUIController, as defined in
-  // function rules_ui(). Therefore we have to do a lot of juggling to modify
-  // the operations.
-  $statuses = array('active', 'inactive');
-  foreach ($statuses as $status) {
-    foreach (element_children($form[$status]['#rows']) as $index) {
-      $machine_name = $form[$status]['#rows'][$index][0]['data']['description']['settings']['machine_name']['#markup'];
-      $to_remove = t('Machine name') . ': ';
-      $machine_name = str_replace($to_remove, '', $machine_name);
-      $form[$status]['#rows'][$index]['operations']['data']['#links']['cmi_export'] = array(
-        'title' => t('CMI Export'),
-        'href' => 'admin/config/development/configuration/single/export', 
-        'query' => array(
-          'group' => 'Rules configuration',
-          'name' => 'rules_config.' . $machine_name,
-        ),
-        'attributes' => array(
-          'class' => array(
-              'edit',
-              'action',
+  if (config_get('rules_cmi.settings', 'cmi_storage_status') == 'cmi') {
+    $form['filter']['tag']['#options'] = array(0 => t('<All>')) + rules_cmi_get_tags();
+    // Add the operation "CMI export"
+    // This is complicated and pretty ridiculous. Rules doesn't allow to set a
+    // different UI controller other than RulesUIController, as defined in
+    // function rules_ui(). Therefore we have to do a lot of juggling to modify
+    // the operations.
+    $statuses = array('active', 'inactive');
+    foreach ($statuses as $status) {
+      foreach (element_children($form[$status]['#rows']) as $index) {
+        $machine_name = $form[$status]['#rows'][$index][0]['data']['description']['settings']['machine_name']['#markup'];
+        $to_remove = t('Machine name') . ': ';
+        $machine_name = str_replace($to_remove, '', $machine_name);
+        $form[$status]['#rows'][$index]['operations']['data']['#links']['cmi_export'] = array(
+          'title' => t('CMI Export'),
+          'href' => 'admin/config/development/configuration/single/export', 
+          'query' => array(
+            'group' => 'Rules configuration',
+            'name' => 'rules_config.' . $machine_name,
           ),
-        ),
-      );
+          'attributes' => array(
+            'class' => array(
+                'edit',
+                'action',
+            ),
+          ),
+        );
+      }
     }
   }
 }
