@@ -242,6 +242,206 @@ function _rule_cmi_unique_name($database_rule_name, $existing_cmi_names) {
   return $chosen_name;
 }
 
+/**
+ * Form builder.
+ * 
+ * Transfer rules from cmi to db.
+ */
 function rules_cmi_transfer_to_db_form($form, &$form_state) {
+  $existing_cmi_rule_names = config_get_names_with_prefix('rules_config.');
 
+  if (count($existing_cmi_rule_names) < 1) {
+    $form['count'] = array(
+      '#markup' => t('There are no Rules currently in CMI storage.'),
+    );
+  }
+  else {
+    $form['count'] = array(
+      '#type' => 'help',
+      '#markup' => format_plural(count($existing_cmi_rule_names), 'There is @count Rule currently stored in database.', 'There are @count Rules in CMI storage.', array((count($existing_cmi_rule_names)))),
+    );
+    $form['transfer_options'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Transfer options'),
+    );
+    $form['transfer_options']['remove'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Delete the CMI Rules after transfer'),
+      '#description' => t('Warning: this action cannot be undone'),
+    );
+    $form['transfer_options']['if_exists'] = array(
+      '#type' => 'radios',
+      '#title' => t('If a Rule with the same machine name exists in database'),
+      '#options' => array(
+        'skip' => t('Do not transfer the Rule if a database Rule with the same name exists'),
+        'overwrite' => t('Overwrite the existing database Rule'),
+        'clone' => t('Create a new Rule with a modified machine name'),
+      ),
+      '#default_value' => 'skip',
+      '#required' => TRUE,
+    );
+    $form['confirm'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Confirm transfer of Rules from CMI to database'),
+      '#required' => TRUE,
+    );
+
+    $form['actions'] = array(
+      '#type' => 'actions',
+      'submit' => array(
+        '#type' => 'submit',
+        '#value' => t('Transfer'),
+      ),
+    );
+  }
+  return $form;
+}
+
+
+/**
+ * Submit handler.
+ */
+function rules_cmi_transfer_to_db_form_submit($form, &$form_state) {
+  $remove = $form_state['values']['remove'];
+  $if_exists = $form_state['values']['if_exists'];
+  // Get all existing database rule names.
+  $q = db_select('rules_config');
+  $q->addField('rules_config', 'name');
+  $existing_names = $q->execute()->fetchCol();
+  // Get all CMI Rule names.
+  $cmi_rule_names = config_get_names_with_prefix('rules_config.');
+  $batch = array(
+    'operations' => array(
+      array('rules_cmi_transfer_to_database_batch', array($cmi_rule_names, $existing_names, $if_exists, $remove)),
+    ),
+    'finished' => 'rules_cmi_transfer_to_database_batch_finished',
+    'title' => t('Transferring Rules from CMI to database'),
+    'init_message' => t('Process is starting.'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('The process has encountered an error.'),
+    'file' => backdrop_get_path('module', 'rules_cmi') . '/rules_cmi.admin.inc',
+  );
+  batch_set($batch);
+}
+
+
+/**
+ * Batch callback to transfer from database to CMI.
+ */
+function rules_cmi_transfer_to_database_batch($cmi_rule_names, $existing_names, $if_name_exists, $remove_rule, &$context) {
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['cmi_rule_names'] = $cmi_rule_names;
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_item'] = 0;
+    $context['sandbox']['total'] = count($cmi_rule_names);
+  }
+  // How many items to process in each call.
+  $limit = 10;
+  while ($context['sandbox']['current_item'] < $limit && $context['sandbox']['current_item'] < $context['sandbox']['total']) {
+    $current_index = $context['sandbox']['current_item'];
+    $cmi_rule_name = $context['sandbox']['cmi_rule_names'][$current_index];
+    $config = config($cmi_rule_name);
+    $cmi_rule_array = $config->get();
+
+    if (in_array($cmi_rule_array['name'], $existing_names)) {
+      switch ($if_name_exists) {
+        case 'skip':
+          $context['sandbox']['current_item']++;
+          $context['sandbox']['progress']++;
+          continue 2;
+          break;
+        case 'clone':
+          $cmi_rule_array['name'] = _rule_cmi_unique_name($cmi_rule_array['name'], $existing_names);
+          $cmi_rule_array['label'] = $cmi_rule_array['label'] . ' ' . t('(from cmi)');
+          break;
+        case 'overwrite':
+          $db_rules = db_select('rules_config')->fields('rules_config', array())->condition('name', $cmi_rule_array['name'])->execute()->fetchAll();
+          $id = $db_rules[0]->id;
+          db_delete('rules_config')
+            ->condition('id', $id)->execute();
+          db_delete('rules_tags')
+            ->condition('id', $id)->execute();
+          db_delete('rules_trigger')
+            ->condition('id', $id)->execute();
+          db_delete('rules_dependencies')
+            ->condition('id', $id)->execute();
+          break;
+      }
+    }
+    
+    _rules_cmi_transfer_to_database_helper($cmi_rule_array);
+    if ($remove_rule) {
+      $config->delete();   
+    }
+
+    $context['message'] = t('Now processing Rule %item', array('%item' => $cmi_rule_array['label']));
+    $context['results'][] = t('Transferred %item', array('%item' => $cmi_rule_array['name']));
+    $context['sandbox']['current_item']++;
+    $context['sandbox']['progress']++;
+  }
+  if ($context['sandbox']['progress'] != $context['sandbox']['total']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['total'];
+  }
+}
+
+/**
+ * Transfer to CMI finish callback.
+ */
+function rules_cmi_transfer_to_database_batch_finished($success, $results, $operations) {
+  if ($success) {
+    $message = t('@count items successfully processed.', array('@count' => count($results)));;
+    backdrop_set_message($message);  }
+  else {
+    // An error occurred.
+    // $operations contains the operations that remained unprocessed.
+    $error_operation = reset($operations);
+    $message = t('An error occurred while processing %error_operation with arguments: @arguments', array('%error_operation' => $error_operation[0], '@arguments' => print_r($error_operation[1], TRUE)));
+    backdrop_set_message($message, 'error');
+  }
+}
+
+/**
+ * Helper to write the database rule.
+ */
+function _rules_cmi_transfer_to_database_helper($cmi_rule_array) {
+  $dependencies = $cmi_rule_array['dependencies'];
+  unset($cmi_rule_array['dependencies']);
+  $tags = $cmi_rule_array['tags'];
+  unset($cmi_rule_array['tags']);
+  unset($cmi_rule_array['id']);
+  $rules_plugin = unserialize($cmi_rule_array['data']);
+  $cmi_rule_array['data'] = $rules_plugin;
+  backdrop_write_record('rules_config', $cmi_rule_array);
+  $id = $cmi_rule_array['id'];
+  
+  // Write to the rules_dependencies table.
+  foreach ($dependencies as $dependency) {
+    db_merge('rules_dependencies')
+      ->key(array('id' => $id, 'module' => $dependency))
+      ->fields(array(
+        'id' => $id,
+        'module' => $dependency,
+    ))->execute();
+  }
+  // Write to the rules_tags table.
+  foreach ($tags as $tag) {
+    db_merge('rules_tags')
+      ->key(array('id' => $id, 'tag' => $tag))
+      ->fields(array(
+        'id' => $id,
+        'tag' => $tag,
+    ))->execute();
+  }
+  // Write to the rules_trigger table.
+  if ($rules_plugin instanceof RulesTriggerableInterface) {
+    $events = $rules_plugin->events();
+    foreach ($events as $event) {
+      db_merge('rules_trigger')
+        ->key(array('id' => $id, 'event' => $event))
+        ->fields(array(
+          'id' => $id,
+          'event' => $event,
+      ))->execute();
+    }
+  }
 }
