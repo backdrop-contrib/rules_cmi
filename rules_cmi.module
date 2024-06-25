@@ -51,6 +51,18 @@ function rules_cmi_menu() {
 
   return $items;
 }
+
+/**
+ * Implements hook_config_info().
+ */
+function rules_cmi_config_info() {
+  $prefixes['rules_cmi.settings'] = array(
+    'label' => t('Rules CMI settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
+
 /**
  * Implements hook_entity_info_alter().
  */
