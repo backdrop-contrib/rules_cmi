@@ -11,7 +11,7 @@ function rules_cmi_configuration_form($form, $form_state) {
   $help_items[] = t('Selecting <i>Rules stored as CMI json files</i> will cause all new Rules to be stored as CMI json files in the active config directory.');
   $help_items[] = t('Selecting <i>Rules stored in database</i> will cause all new Rules to be stored in the database.');
   $help = theme('item_list', array('items' => $help_items));
-  $help .= t('<p>Changing storage type will NOT automatically transfer existing Rules. To transfer exising Rules, please visit <a href="@transfer_link">Rules transfer</a></p>', array('@transfer_link' => url('admin/config/workflow/rules/rules_cmi/transfer')));
+  $help .= t('<p>Changing storage type will NOT automatically transfer existing Rules. To transfer existing Rules, please visit <a href="@transfer_link">Rules transfer</a></p>', array('@transfer_link' => url('admin/config/workflow/rules_cmi/transfer')));
   $form['explanation'] = array(
     '#type' => 'fieldset',
     '#title' => t('About Rules CMI Storage'),
