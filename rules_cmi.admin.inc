@@ -11,7 +11,7 @@ function rules_cmi_configuration_form($form, $form_state) {
   $help_items[] = t('Selecting <i>Rules stored as CMI json files</i> will cause all new Rules to be stored as CMI json files in the active config directory.');
   $help_items[] = t('Selecting <i>Rules stored in database</i> will cause all new Rules to be stored in the database.');
   $help = theme('item_list', array('items' => $help_items));
-  $help .= t('<p>Changing storage type will NOT automatically transfer existing Rules. To transfer existing Rules, please visit <a href="@transfer_link">Rules transfer</a></p>', array('@transfer_link' => url('admin/config/workflow/rules_cmi/transfer')));
+  $help .= t('<p>Changing storage type will NOT automatically transfer existing Rules. To transfer existing Rules, please visit <a href="@transfer_link">Rules transfer</a>.</p>', array('@transfer_link' => url('admin/config/workflow/rules_cmi/transfer')));
   $form['explanation'] = array(
     '#type' => 'fieldset',
     '#title' => t('About Rules CMI Storage'),
@@ -63,39 +63,46 @@ function rules_cmi_transfer_to_cmi_form($form, &$form_state) {
       '#type' => 'help',
       '#markup' => format_plural($rules_count, 'There is @count Rule currently stored in database.', 'There are @count Rules currently stored in database.', array($rules_count)),
     );
-    $form['transfer_options'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Transfer options'),
-    );
-    $form['transfer_options']['remove'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Delete the database Rules after transfer'),
-      '#description' => t('Warning: this action cannot be undone'),
-    );
-    $form['transfer_options']['if_exists'] = array(
-      '#type' => 'radios',
-      '#title' => t('If a Rule with the same machine name exists in CMI'),
-      '#options' => array(
-        'skip' => t('Do not transfer the Rule if a CMI Rule with the same name exists'),
-        'overwrite' => t('Overwrite the existing CMI Rule'),
-        'clone' => t('Create a new Rule with a modified machine name'),
-      ),
-      '#default_value' => 'skip',
-      '#required' => TRUE,
-    );
-    $form['confirm'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Confirm transfer of Rules from database to CMI'),
-      '#required' => TRUE,
-    );
-
-    $form['actions'] = array(
-      '#type' => 'actions',
-      'submit' => array(
-        '#type' => 'submit',
-        '#value' => t('Transfer'),
-      ),
-    );
+    if (config_get('rules_cmi.settings', 'cmi_storage_status') != 'cmi') {
+      backdrop_set_message(t('The database Rules cannot be transferred to CMI. Be sure to select "Rules stored as CMI json files" in the <a href="@settings-url">Rules CMI Status page</a> and try again.', array('@settings-url' => url('admin/config/workflow/rules_cmi'))), 'warning');
+      $form['note'] = array(
+        '#type' => 'help',
+        '#markup' => t('Rules cannot be transferred.'),
+      );
+    }
+    else {
+      $form['transfer_options'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Transfer options'),
+      );
+      $form['transfer_options']['remove'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Delete the database Rules after transfer'),
+        '#description' => t('Warning: this action cannot be undone'),
+      );
+      $form['transfer_options']['if_exists'] = array(
+        '#type' => 'radios',
+        '#title' => t('If a Rule with the same machine name exists in CMI'),
+        '#options' => array(
+          'skip' => t('Do not transfer the Rule if a CMI Rule with the same name exists'),
+          'overwrite' => t('Overwrite the existing CMI Rule'),
+          'clone' => t('Create a new Rule with a modified machine name'),
+        ),
+        '#default_value' => 'skip',
+        '#required' => TRUE,
+      );
+      $form['warning'] = array(
+        '#type' => 'help',
+        '#markup' => 'Warning: this action cannot be undone.'
+      );
+      $form['actions'] = array(
+        '#type' => 'actions',
+        'submit' => array(
+          '#type' => 'submit',
+          '#value' => t('Transfer database Rules to CMI storage'),
+        ),
+      );
+    }
   }
   return $form;
 }
@@ -262,39 +269,46 @@ function rules_cmi_transfer_to_db_form($form, &$form_state) {
       '#type' => 'help',
       '#markup' => format_plural(count($existing_cmi_rule_names), 'There is @count Rule currently stored in database.', 'There are @count Rules in CMI storage.', array((count($existing_cmi_rule_names)))),
     );
-    $form['transfer_options'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Transfer options'),
-    );
-    $form['transfer_options']['remove'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Delete the CMI Rules after transfer'),
-      '#description' => t('Warning: this action cannot be undone'),
-    );
-    $form['transfer_options']['if_exists'] = array(
-      '#type' => 'radios',
-      '#title' => t('If a Rule with the same machine name exists in database'),
-      '#options' => array(
-        'skip' => t('Do not transfer the Rule if a database Rule with the same name exists'),
-        'overwrite' => t('Overwrite the existing database Rule'),
-        'clone' => t('Create a new Rule with a modified machine name'),
-      ),
-      '#default_value' => 'skip',
-      '#required' => TRUE,
-    );
-    $form['confirm'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Confirm transfer of Rules from CMI to database'),
-      '#required' => TRUE,
-    );
-
-    $form['actions'] = array(
-      '#type' => 'actions',
-      'submit' => array(
-        '#type' => 'submit',
-        '#value' => t('Transfer'),
-      ),
-    );
+    if (config_get('rules_cmi.settings', 'cmi_storage_status') != 'database') {
+      backdrop_set_message(t('The CMI Rules cannot be transferred to database. Be sure to select "Rules stored in database" in the <a href="@settings-url">Rules CMI Status page</a> and try again.', array('@settings-url' => url('admin/config/workflow/rules_cmi'))), 'warning');
+      $form['note'] = array(
+        '#type' => 'help',
+        '#markup' => t('Rules cannot be transferred.'),
+      );
+    }
+    else {
+      $form['transfer_options'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Transfer options'),
+      );
+      $form['transfer_options']['remove'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Delete the CMI Rules after transfer'),
+        '#description' => t('Warning: this action cannot be undone'),
+      );
+      $form['transfer_options']['if_exists'] = array(
+        '#type' => 'radios',
+        '#title' => t('If a Rule with the same machine name exists in database'),
+        '#options' => array(
+          'skip' => t('Do not transfer the Rule if a database Rule with the same name exists'),
+          'overwrite' => t('Overwrite the existing database Rule'),
+          'clone' => t('Create a new Rule with a modified machine name'),
+        ),
+        '#default_value' => 'skip',
+        '#required' => TRUE,
+      );
+      $form['warning'] = array(
+        '#type' => 'help',
+        '#markup' => 'Warning: this action cannot be undone.'
+      );
+      $form['actions'] = array(
+        '#type' => 'actions',
+        'submit' => array(
+          '#type' => 'submit',
+          '#value' => t('Transfer CMI Rules to database storage'),
+        ),
+      );
+    }
   }
   return $form;
 }
