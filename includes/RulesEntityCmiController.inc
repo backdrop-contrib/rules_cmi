@@ -256,6 +256,7 @@ class RulesEntityCmiController extends EntityPlusCmiController {
   protected function setDefaults($rules_config) {
     $defaults = array(
       'label' => 'unlabeled',
+      'name' => '',
       'active' => 1,
       'weight' => 0,
       'dirty' => 0,
@@ -263,6 +264,7 @@ class RulesEntityCmiController extends EntityPlusCmiController {
       'access_exposed' => 0,
       'status' => ENTITY_PLUS_CUSTOM,
       'tags' => array(),
+      'dependencies' => array()
     );
     foreach ($defaults as $key => $value) {
       if (!isset($rules_config->$key)) {
