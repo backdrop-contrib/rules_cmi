@@ -149,23 +149,28 @@ function rules_cmi_transfer_to_cmi_batch($database_rules, $existing_cmi_names, $
     $current_index = $context['sandbox']['current_item'];
     $database_rule = $context['sandbox']['database_rules'][$current_index];
     $original_rule_id = $database_rule->id;
-    switch ($if_name_exists) {
-      case 'skip':
-        if (in_array($database_rule->name, $existing_cmi_names)) {
-          $context['sandbox']['current_item']++;
-          $context['sandbox']['progress']++;
-          $total_to_process--;
-          continue 2;
-        }
-        break;
-      case 'clone':
-        if (in_array($database_rule->name, $existing_cmi_names)) {
-          $database_rule->name = _rule_cmi_unique_name($database_rule->name, $existing_cmi_names);
-          $database_rule->label = $database_rule->label . ' ' . t('(from db)');
-        }
-        break;
-    }
-    _rules_cmi_transfer_to_cmi_helper($database_rule);
+
+    // Skip transferring default Rules that are "in code," as those will be
+    // transferred automatically upon cache clearing.
+    if ($database_rule->status != ENTITY_PLUS_IN_CODE) {
+      switch ($if_name_exists) {
+        case 'skip':
+          if (in_array($database_rule->name, $existing_cmi_names)) {
+            $context['sandbox']['current_item']++;
+            $context['sandbox']['progress']++;
+            $total_to_process--;
+            continue 2;
+          }
+          break;
+        case 'clone':
+          if (in_array($database_rule->name, $existing_cmi_names)) {
+            $database_rule->name = _rule_cmi_unique_name($database_rule->name, $existing_cmi_names);
+            $database_rule->label = $database_rule->label . ' ' . t('(from db)');
+          }
+          break;
+      }
+      _rules_cmi_transfer_to_cmi_helper($database_rule);
+    }  
     if ($remove_rule) {
       db_delete('rules_config')
         ->condition('id', $original_rule_id)
@@ -198,7 +203,9 @@ function rules_cmi_transfer_to_cmi_batch($database_rules, $existing_cmi_names, $
 function rules_cmi_transfer_to_cmi_batch_finished($success, $results, $operations) {
   if ($success) {
     $message = t('@count items successfully processed.', array('@count' => count($results)));;
-    backdrop_set_message($message);  }
+    backdrop_set_message($message);
+    backdrop_flush_all_caches();
+  }
   else {
     // An error occurred.
     // $operations contains the operations that remained unprocessed.
@@ -359,34 +366,38 @@ function rules_cmi_transfer_to_database_batch($cmi_rule_names, $existing_names, 
     $config = config($cmi_rule_name);
     $cmi_rule_array = $config->get();
 
-    if (in_array($cmi_rule_array['name'], $existing_names)) {
-      switch ($if_name_exists) {
-        case 'skip':
-          $context['sandbox']['current_item']++;
-          $context['sandbox']['progress']++;
-          $total_to_process--;
-          continue 2;
-          break;
-        case 'clone':
-          $cmi_rule_array['name'] = _rule_cmi_unique_name($cmi_rule_array['name'], $existing_names);
-          $cmi_rule_array['label'] = $cmi_rule_array['label'] . ' ' . t('(from cmi)');
-          break;
-        case 'overwrite':
-          $db_rules = db_select('rules_config')->fields('rules_config', array())->condition('name', $cmi_rule_array['name'])->execute()->fetchAll();
-          $id = $db_rules[0]->id;
-          db_delete('rules_config')
-            ->condition('id', $id)->execute();
-          db_delete('rules_tags')
-            ->condition('id', $id)->execute();
-          db_delete('rules_trigger')
-            ->condition('id', $id)->execute();
-          db_delete('rules_dependencies')
-            ->condition('id', $id)->execute();
-          break;
+    // Skip transferring default Rules that are "in code", as those will be
+    // automatically transferred upon cache clearing.
+    if ($cmi_rule_array['status'] != ENTITY_PLUS_IN_CODE) {
+      if (in_array($cmi_rule_array['name'], $existing_names)) {
+        switch ($if_name_exists) {
+          case 'skip':
+            $context['sandbox']['current_item']++;
+            $context['sandbox']['progress']++;
+            $total_to_process--;
+            continue 2;
+            break;
+          case 'clone':
+            $cmi_rule_array['name'] = _rule_cmi_unique_name($cmi_rule_array['name'], $existing_names);
+            $cmi_rule_array['label'] = $cmi_rule_array['label'] . ' ' . t('(from cmi)');
+            break;
+          case 'overwrite':
+            $db_rules = db_select('rules_config')->fields('rules_config', array())->condition('name', $cmi_rule_array['name'])->execute()->fetchAll();
+            $id = $db_rules[0]->id;
+            db_delete('rules_config')
+              ->condition('id', $id)->execute();
+            db_delete('rules_tags')
+              ->condition('id', $id)->execute();
+            db_delete('rules_trigger')
+              ->condition('id', $id)->execute();
+            db_delete('rules_dependencies')
+              ->condition('id', $id)->execute();
+            break;
+        }
       }
+      _rules_cmi_transfer_to_database_helper($cmi_rule_array);
     }
-    
-    _rules_cmi_transfer_to_database_helper($cmi_rule_array);
+
     if ($remove_rule) {
       $config->delete();   
     }
@@ -408,7 +419,9 @@ function rules_cmi_transfer_to_database_batch($cmi_rule_names, $existing_names, 
 function rules_cmi_transfer_to_database_batch_finished($success, $results, $operations) {
   if ($success) {
     $message = t('@count items successfully processed.', array('@count' => count($results)));;
-    backdrop_set_message($message);  }
+    backdrop_set_message($message);
+    backdrop_flush_all_caches();
+  }
   else {
     // An error occurred.
     // $operations contains the operations that remained unprocessed.
