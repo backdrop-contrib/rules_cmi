@@ -137,8 +137,8 @@ function rules_cmi_transfer_to_cmi_batch($database_rules, $existing_cmi_names, $
     $context['sandbox']['total'] = count($database_rules);
   }
   // How many items to process in each call.
-  $limit = 10;
-  while ($context['sandbox']['current_item'] < $limit && $context['sandbox']['current_item'] < $context['sandbox']['total']) {
+  $total_to_process = 10;
+  while ($total_to_process > 0 && $context['sandbox']['current_item'] < $context['sandbox']['total']) {
     $current_index = $context['sandbox']['current_item'];
     $database_rule = $context['sandbox']['database_rules'][$current_index];
     $original_rule_id = $database_rule->id;
@@ -147,6 +147,7 @@ function rules_cmi_transfer_to_cmi_batch($database_rules, $existing_cmi_names, $
         if (in_array($database_rule->name, $existing_cmi_names)) {
           $context['sandbox']['current_item']++;
           $context['sandbox']['progress']++;
+          $total_to_process--;
           continue 2;
         }
         break;
@@ -175,6 +176,7 @@ function rules_cmi_transfer_to_cmi_batch($database_rules, $existing_cmi_names, $
 
     $context['message'] = t('Now processing Rule %item', array('%item' => $database_rule->label));
     $context['results'][] = t('Transferred %item', array('%item' => $database_rule->name));
+    $total_to_process--;
     $context['sandbox']['current_item']++;
     $context['sandbox']['progress']++;
   }
@@ -336,8 +338,8 @@ function rules_cmi_transfer_to_database_batch($cmi_rule_names, $existing_names, 
     $context['sandbox']['total'] = count($cmi_rule_names);
   }
   // How many items to process in each call.
-  $limit = 10;
-  while ($context['sandbox']['current_item'] < $limit && $context['sandbox']['current_item'] < $context['sandbox']['total']) {
+  $total_to_process = 10;
+  while ($total_to_process > 0 && $context['sandbox']['current_item'] < $context['sandbox']['total']) {
     $current_index = $context['sandbox']['current_item'];
     $cmi_rule_name = $context['sandbox']['cmi_rule_names'][$current_index];
     $config = config($cmi_rule_name);
@@ -348,6 +350,7 @@ function rules_cmi_transfer_to_database_batch($cmi_rule_names, $existing_names, 
         case 'skip':
           $context['sandbox']['current_item']++;
           $context['sandbox']['progress']++;
+          $total_to_process--;
           continue 2;
           break;
         case 'clone':
@@ -376,6 +379,7 @@ function rules_cmi_transfer_to_database_batch($cmi_rule_names, $existing_names, 
 
     $context['message'] = t('Now processing Rule %item', array('%item' => $cmi_rule_array['label']));
     $context['results'][] = t('Transferred %item', array('%item' => $cmi_rule_array['name']));
+    $total_to_process--;
     $context['sandbox']['current_item']++;
     $context['sandbox']['progress']++;
   }
