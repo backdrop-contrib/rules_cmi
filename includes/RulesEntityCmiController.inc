@@ -40,7 +40,9 @@ class RulesEntityCmiController extends EntityPlusCmiController {
       // Property events requires special handling.
       unset($properties['properties']['events']);
       foreach ($properties['properties'] as $field_name => $info) {
-        $entity->$field_name = $record->$field_name;
+        if (isset($record->$field_name)) {
+          $entity->$field_name = $record->$field_name;
+        }
       }
 
       unset($entity->data);
