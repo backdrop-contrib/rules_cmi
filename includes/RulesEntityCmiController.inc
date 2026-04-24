@@ -7,14 +7,14 @@
 
 /**
  * A controller that is used instead of RulesEntityController.
- * 
+ *
  * Saves rules_config entities as CMI json files.
  */
 class RulesEntityCmiController extends EntityPlusCmiController {
 
   /**
    * Overridden.
-   * 
+   *
    * This is an adaptation of RulesEntityController::create()
    */
   public function create(array $values = array()) {
@@ -26,7 +26,7 @@ class RulesEntityCmiController extends EntityPlusCmiController {
 
   /**
    * Overridden.
-   * 
+   *
    * @see DefaultEntityController::attachLoad()
    */
   protected function attachLoad(&$retrieved_entities, $revision_id = FALSE) {
@@ -35,7 +35,7 @@ class RulesEntityCmiController extends EntityPlusCmiController {
       $entity = unserialize($record->data);
       // Set the values of the other properties.
       // Get the list of defined properties. All properties must be defined
-      // by hook_entity_property_info(). 
+      // by hook_entity_property_info().
       $properties = entity_plus_get_property_info($this->entityType);
       // Property events requires special handling.
       unset($properties['properties']['events']);
@@ -54,7 +54,7 @@ class RulesEntityCmiController extends EntityPlusCmiController {
 
   /**
    * Override to support having events and tags as conditions.
-   * 
+   *
    * This is an adaptation of RulesEntityController::applyConditions()
    *
    * @see EntityPlusControllerExportable::applyConditions()
@@ -116,9 +116,9 @@ class RulesEntityCmiController extends EntityPlusCmiController {
 
   /**
    * Overridden to work with Rules' custom export format.
-   * 
+   *
    * NOT TESTED.
-   * 
+   *
    * Verbatim copy of RulesEntityController::export().
    *
    * @param string $export
@@ -163,10 +163,10 @@ class RulesEntityCmiController extends EntityPlusCmiController {
 
   /**
    * Overridden.
-   * 
+   *
    * Adaptation of RulesEntityController::save().
    */
-  public function save($rules_config, DatabaseTransaction $transaction = NULL) {
+  public function save($rules_config, ?DatabaseTransaction $transaction = NULL) {
     // At times (e.g. during import) some of the $rules_config defaults are not
     // set. When Rules are in DB, this is not a problem - Backdrop creates
     // defaults defined in hook_schema(). With CMI with need to set them
@@ -217,10 +217,10 @@ class RulesEntityCmiController extends EntityPlusCmiController {
 
   /**
    * Overridden.
-   * 
+   *
    * Adaptation of Adaptation of RulesEntityController::delete()
    */
-  public function delete($ids, DatabaseTransaction $transaction = NULL) {
+  public function delete($ids, ?DatabaseTransaction $transaction = NULL) {
     $configs = $ids ? entity_load('rules_config', $ids) : array();
     $return = parent::delete($ids, $transaction);
     // Stop event dispatchers when deleting the last rule of an event set.
